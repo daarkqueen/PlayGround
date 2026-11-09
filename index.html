@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#08060d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Vesper's Lament — A Gothic Pixel Metroidvania</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="game" width="480" height="272" aria-label="Vesper's Lament game"></canvas>
+    <div id="scanlines" aria-hidden="true"></div>
+  </div>
+
+  <div id="hud-buttons">
+    <button id="btn-map" class="icon-btn" aria-label="Map" title="Map (M)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 4v14M15 6v14" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".7"/></svg>
+    </button>
+    <button id="btn-pause" class="icon-btn" aria-label="Pause" title="Pause (Esc)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+    </button>
+    <button id="btn-mute" class="icon-btn" aria-label="Toggle sound" title="Sound">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4V9z" fill="currentColor"/><path id="mute-wave" d="M16 9c1.2 1 1.2 5 0 6M18.5 6.5c2.4 2.2 2.4 8.8 0 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path id="mute-x" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" style="display:none"/></svg>
+    </button>
+  </div>
+
+  <div id="touch-ui" aria-hidden="true">
+    <div id="stick-zone">
+      <div id="stick-base"><div id="stick-knob"></div></div>
+    </div>
+    <div id="action-buttons">
+      <button id="btn-attack" class="action-btn attack" aria-label="Attack">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M35 6L19 26l-4-4L6 31l11 11 9-9-4-4L42 13z" fill="currentColor" opacity=".9"/><path d="M10 33l5 5" stroke="#120c18" stroke-width="2.2"/></svg>
+      </button>
+      <button id="btn-jump" class="action-btn jump" aria-label="Jump">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 8l12 14h-8v14H20V22h-8L24 8z" fill="currentColor"/></svg>
+      </button>
+      <button id="btn-dash" class="action-btn dash" aria-label="Dash">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 16h19l-5-6 13 11-13 11 5-6H9z" fill="currentColor"/><path d="M8 33h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" opacity=".65"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="title" class="screen active">
+    <div class="title-inner">
+      <div class="eyebrow">A GOTHIC PIXEL METROIDVANIA</div>
+      <h1>VESPER'S<br><span>LAMENT</span></h1>
+      <div class="title-rule"><i></i><b>✦</b><i></i></div>
+      <p class="sub">The Pale Rose must bloom again.</p>
+      <div class="menu">
+        <button id="btn-start" class="btn primary">Start</button>
+        <button id="btn-continue" class="btn">Continue</button>
+      </div>
+      <div class="hint" id="title-hint">A/D or arrows to move · Z jump · X attack · C dash · M map</div>
+    </div>
+    <div class="title-footer">HEADPHONES RECOMMENDED · TOUCH CONTROLS ON MOBILE</div>
+  </div>
+
+  <div id="pause" class="screen panel-screen">
+    <div class="panel">
+      <div class="panel-mark">✦</div>
+      <h2>Paused</h2>
+      <p class="panel-sub">The candles hold their breath.</p>
+      <div class="menu">
+        <button id="btn-resume" class="btn primary">Resume</button>
+        <button id="btn-pause-map" class="btn">Map</button>
+        <button id="btn-sound" class="btn">Sound: On</button>
+        <button id="btn-quit" class="btn danger">Abandon Run</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="map-screen" class="screen panel-screen">
+    <div class="panel wide">
+      <div class="panel-mark">✦</div>
+      <h2>Chapel Grounds</h2>
+      <div id="map-grid"></div>
+      <div class="relic-row" id="relic-row"></div>
+      <p class="panel-sub" id="map-sub">Tap a discovered chamber to remember its name.</p>
+      <div class="menu">
+        <button id="btn-map-close" class="btn primary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="death" class="screen panel-screen">
+    <div class="panel">
+      <div class="panel-mark blood">✝</div>
+      <h2>You Have Fallen</h2>
+      <p class="panel-sub" id="death-sub">The chapel remembers your name.</p>
+      <div class="menu">
+        <button id="btn-respawn" class="btn primary">Rise Again</button>
+        <button id="btn-death-quit" class="btn">Return to Title</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="victory" class="screen panel-screen">
+    <div class="panel wide">
+      <div class="panel-mark gold">✧</div>
+      <h2>The Pale Rose Blooms</h2>
+      <p class="panel-sub">The Abbess is dust. Morning hesitates at the chapel doors.</p>
+      <div class="victory-stats" id="victory-stats"></div>
+      <div class="menu">
+        <button id="btn-victory-continue" class="btn primary">Wander the Ruins</button>
+        <button id="btn-victory-quit" class="btn">Return to Title</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="rotate-hint">Rotate your device for a wider view <span>↻</span></div>
+  <div id="boot-error" hidden></div>
+</div>
+<script src="js/main.js"></script>
+</body>
+</html>
