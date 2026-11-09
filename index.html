@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#100d18"><title>VESPERBELL — A Gothic Metroidvania</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=UnifrakturCook:wght@700&display=swap');
+:root{color-scheme:dark;--ink:#100d18;--wine:#6d243b;--rose:#e08a9a;--bone:#e4d7c0;--muted:#9a8b9b}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b0910;color:var(--bone);font-family:'DM Mono',monospace}body{display:grid;place-items:center;background:radial-gradient(ellipse at 50% 30%,#27202d 0%,#100d18 65%,#08070b 100%)}
+#shell{position:relative;width:min(100vw, calc(100vh * 1.7778));aspect-ratio:16/9;max-height:100vh;overflow:hidden;background:#100d18;box-shadow:0 0 90px #000b;border:1px solid #69505c}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+#overlay{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(90deg,#0b0910de,#120d19bb 50%,#0b0910d9);transition:opacity .5s;z-index:2}
+#overlay.hidden{opacity:0;pointer-events:none}.title-card{width:min(590px,88%);text-align:center;padding:24px 24px 28px;border:1px solid #95707888;background:linear-gradient(145deg,#16111ddd,#100b15e8);box-shadow:0 0 70px #08060dbb, inset 0 0 50px #4e25301c;position:relative}.title-card:before,.title-card:after{content:'✦';position:absolute;color:#c58c91;font-size:20px;top:12px}.title-card:before{left:16px}.title-card:after{right:16px}.eyebrow{font-size:10px;letter-spacing:.32em;color:#d2939c;margin:0 0 8px}.title{font-family:'UnifrakturCook',Georgia,serif;font-size:clamp(48px,8vw,82px);font-weight:700;line-height:.95;color:#e9d8c6;text-shadow:0 3px #442131,0 0 24px #d25575aa;margin:0}.subtitle{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#b29aa3;margin:10px 0 18px}.story{font:13px/1.7 Georgia,serif;color:#cbbcc0;max-width:430px;margin:0 auto 20px}.start{border:1px solid #b57a84;background:#632a3d;color:#f5e4d5;padding:12px 28px;font:500 11px 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;box-shadow:0 0 20px #85344844;transition:.2s}.start:hover{background:#914358;transform:translateY(-2px);box-shadow:0 0 28px #d0526a77}.hint{font-size:9px;color:#95828e;line-height:1.9;margin:15px 0 0;letter-spacing:.05em}.corner{position:absolute;color:#e2c6b3;font-size:20px;opacity:.65}.c1{top:12px;left:14px}.c2{top:12px;right:14px}.c3{bottom:12px;left:14px}.c4{bottom:12px;right:14px}
+#mobile{display:none;position:absolute;inset:auto 0 12px;justify-content:space-between;padding:0 12px;pointer-events:none;z-index:1}.pad,.actions{display:flex;gap:8px;align-items:end}.actions{align-items:center}.touch{pointer-events:auto;border:1px solid #ad8b93aa;background:#170f1cc9;color:#eed5d2;border-radius:50%;width:48px;height:48px;font:11px 'DM Mono',monospace;touch-action:none}.touch:active{background:#873c50}.touch.small{width:39px;height:39px}.touch.tall{width:54px;height:54px}
+@media(max-width:700px),(pointer:coarse){#mobile{display:flex}.title-card{padding:18px 15px}.story{font-size:12px}.hint{font-size:8px}#shell{width:100vw;max-height:100dvh}}
+</style>
+</head>
+<body><main id="shell"><canvas id="game" width="480" height="270" aria-label="Vesperbell pixel art game"></canvas>
+<div id="overlay"><section class="title-card"><span class="corner c1">✦</span><span class="corner c2">✦</span><span class="corner c3">✦</span><span class="corner c4">✦</span><p class="eyebrow">A GOTHIC PIXEL-ART METROIDVANIA</p><h1 class="title">VESPERBELL</h1><p class="subtitle">The Hollow Keepsake</p><p class="story">In a kingdom where the bells ring for the dead, Pandora descends into a cathedral that should not exist. Find the three lost reliquaries. Befriend the things that haunt them. Silence the heart beneath the stone.</p><button class="start" id="start">✦ &nbsp; Begin the descent &nbsp; ✦</button><p class="hint">MOVE A / D &nbsp; · &nbsp; JUMP SPACE &nbsp; · &nbsp; ATTACK X &nbsp; · &nbsp; HEX C<br>SWITCH WEAPON Q &nbsp; · &nbsp; CALL FAMILIAR F &nbsp; · &nbsp; PAUSE ESC</p></section></div>
+<div id="mobile"><div class="pad"><button class="touch" data-key="a">◀</button><button class="touch" data-key="d">▶</button><button class="touch tall" data-key=" ">↑</button></div><div class="actions"><button class="touch small" data-key="q">Q</button><button class="touch" data-key="x">✦</button><button class="touch tall" data-key="c">☾</button><button class="touch small" data-key="f">♡</button></div></div></main>
+<script>
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
+const W=480,H=270,GROUND=228,worldW=3660;
+let mode='title',last=0,cam=0,shake=0,toast='',toastTime=0,stars=[];
+for(let i=0;i<70;i++)stars.push({x:Math.random()*worldW,y:10+Math.random()*120,r:Math.random()<.7?1:2,a:.2+Math.random()*.6});
+const keys={};
+const player={x:54,y:GROUND-28,vx:0,vy:0,w:13,h:25,face:1,hp:6,maxHp:6,mana:4,maxMana:4,ground:false,attack:0,spell:0,inv:0,weapon:0,anim:0,petCall:0,petCD:0};
+const weapons=[{name:'BELL-SICKLE',damage:2,range:32,color:'#e6b88c'},{name:'GRAVE NEEDLE',damage:1,range:54,color:'#a8d6ce'}];
+let unlocked=[],pets=[],enemies=[],projectiles=[],particles=[],bosses=[];
+const platforms=[{x:0,y:GROUND,w:690},{x:720,y:GROUND,w:560},{x:1320,y:GROUND,w:590},{x:1960,y:GROUND,w:700},{x:2720,y:GROUND,w:940},
+{x:235,y:184,w:76},{x:390,y:151,w:80},{x:585,y:188,w:60},{x:815,y:183,w:78},{x:1015,y:155,w:90},{x:1150,y:186,w:70},{x:1430,y:180,w:75},{x:1600,y:148,w:100},{x:1770,y:183,w:80},{x:2070,y:183,w:90},{x:2240,y:153,w:80},{x:2450,y:185,w:105},{x:2840,y:184,w:90},{x:3040,y:151,w:90},{x:3310,y:180,w:110}];
+const rooms=[{x:0,name:'THE WIDOW’S NAVE',sub:'Where the bells remember'},{x:720,name:'THE THORN GALLERY',sub:'A garden fed by grief'},{x:1320,name:'THE ASHEN CLOISTER',sub:'Keep your candle close'},{x:1960,name:'THE DROWNED ARCHIVE',sub:'Every secret has teeth'},{x:2720,name:'THE HOLLOW SANCTUM',sub:'The heart is listening'}];
+const bossSpecs=[{x:650,name:'THE VEILED ABBESS',hp:12,pet:'MOURNING MOTH',kind:'abbess'},{x:1870,name:'THE CANDLE-EATER',hp:16,pet:'GLOAM KITTEN',kind:'eater'},{x:3370,name:'THE BELL BELOW',hp:24,pet:'GRAVE RAVEN',kind:'final'}];
+for(const b of bossSpecs)bosses.push({...b,maxHp:b.hp,active:false,dead:false,t:0,hit:0,y:GROUND-48});
+function spawnEnemy(x,type='wraith'){enemies.push({x,y:GROUND-23,w:type==='thorn'?16:14,h:23,type,hp:type==='thorn'?4:3,maxHp:type==='thorn'?4:3,dir:-1,t:Math.random()*8,hit:0,dead:false});}
+[190,470,900,1080,1500,1690,2110,2310,2570,2890,3140].forEach((x,i)=>spawnEnemy(x,i%3===0?'thorn':'wraith'));
+function text(s,x,y,size=8,color='#e7d8c9',align='left'){ctx.font=`${size}px "DM Mono",monospace`;ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(s,x,y)}
+function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
+function begin(){if(mode!=='title')return;mode='play';document.getElementById('overlay').classList.add('hidden');notify('THE BELLS HAVE NOT FORGOTTEN YOU');}
+document.getElementById('start').addEventListener('click',begin);
+function notify(s){toast=s;toastTime=2.7}
+function input(k){if(k==='enter'&&mode==='title'){begin();return}if(k==='escape'){if(mode==='play'){mode='pause';notify('DESCENT PAUSED')}else if(mode==='pause')mode='play';return}if(mode!=='play')return;
+if((k===' '||k==='w'||k==='arrowup')&&player.ground){player.vy=-6.1;player.ground=false;burst(player.x+6,player.y+23,'#d7b6ba',4)}
+if(k==='x'&&!player.attack){player.attack=.25;player.anim=0;attack()}
+if(k==='c'&&!player.spell&&player.mana>0){player.spell=.18;player.mana--;cast()}
+if(k==='q'){player.weapon=(player.weapon+1)%weapons.length;notify(weapons[player.weapon].name)}
+if(k==='f'&&pets.length){player.petCall=1.5;notify(`${pets[0]} ANSWERS YOUR CALL`);burst(player.x+6,player.y,'#bd91bd',8)}
+}
+function attack(){let p=player,best=null,bd=999;for(const e of [...enemies,...bosses.filter(b=>b.active&&!b.dead)]){if(e.dead)continue;const d=(e.x+8-p.x)*(p.face);if(d>=-8&&d<weapons[p.weapon].range&&Math.abs((e.y||GROUND-30)-(p.y+10))<42&&Math.abs(d)<bd){best=e;bd=Math.abs(d)}}if(best){best.hp-=weapons[p.weapon].damage;best.hit=.25;shake=3;burst(best.x+8,best.y+15,weapons[p.weapon].color,8);if(best.hp<=0){best.dead=true;if(best.pet){unlocked.push(best.pet);pets.push(best.pet);player.maxHp=Math.min(8,player.maxHp+1);player.hp=Math.min(player.maxHp,player.hp+2);player.maxMana++;player.mana=player.maxMana;notify(`RELIQUARY CLAIMED · ${best.pet} IS YOURS`)}else notify('THE WRAITH UNRAVELS')}}else burst(p.x+p.face*22,p.y+12,weapons[p.weapon].color,4)}
+function cast(){let dir=player.face;projectiles.push({x:player.x+6+dir*9,y:player.y+12,vx:dir*3.4,life:1.3,kind:'hex'});burst(player.x+6,player.y+12,'#b794db',7)}
+function burst(x,y,color,n){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*3,vy:(Math.random()-.7)*3,life:.25+Math.random()*.4,color})}
+function hurt(dmg=1){if(player.inv>0)return;player.hp-=dmg;player.inv=.9;shake=5;burst(player.x+6,player.y+12,'#d66372',8);if(player.hp<=0){player.hp=player.maxHp;player.mana=player.maxMana;player.x=Math.max(50,Math.floor(player.x/1200)*1200+50);player.y=GROUND-player.h;notify('THE ABBEY RETURNS WHAT IT TAKES');}}
+function update(dt){if(mode!=='play')return;dt=Math.min(.04,dt);let p=player;p.anim+=dt;if(p.attack>0)p.attack-=dt;if(p.spell>0)p.spell-=dt;if(p.inv>0)p.inv-=dt;if(p.petCall>0)p.petCall-=dt;if(p.petCD>0)p.petCD-=dt;if(pets.length&&p.petCD<=0){const prey=[...enemies,...bosses.filter(b=>b.active&&!b.dead)].find(e=>!e.dead&&Math.abs(e.x-p.x)<145);if(prey){prey.hp--;prey.hit=.15;p.petCD=1.6;burst(prey.x+7,prey.y+10,'#c9a9dc',5);if(prey.hp<=0){prey.dead=true;if(prey.pet&&!pets.includes(prey.pet)){pets.push(prey.pet);unlocked.push(prey.pet);notify(`${prey.pet} CLAIMED`)}}}}
+let move=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);if(move){p.vx=move*1.65;p.face=move}else p.vx*=.72;p.x=Math.max(0,Math.min(worldW-p.w,p.x+p.vx));p.vy+=.27;p.y+=p.vy;p.ground=false;
+for(const q of platforms){if(p.x+p.w>q.x&&p.x<q.x+q.w&&p.y+p.h>=q.y&&p.y+p.h-p.vy<=q.y&&p.vy>=0){p.y=q.y-p.h;p.vy=0;p.ground=true}}
+if(p.y>H+40)hurt();
+for(const e of enemies){if(e.dead)continue;e.t+=dt;if(e.hit>0)e.hit-=dt;let dx=p.x-e.x;if(Math.abs(dx)<130){e.dir=Math.sign(dx)||1;e.x+=e.dir*(e.type==='thorn'?.43:.55)}if(Math.abs(dx)<18&&Math.abs(p.y-e.y)<30)hurt();}
+for(const b of bosses){if(b.dead)continue;if(!b.active&&Math.abs(p.x-b.x)<160){b.active=true;notify(`BOSS · ${b.name}`)}if(!b.active)continue;b.t+=dt;if(b.hit>0)b.hit-=dt;let dx=p.x-b.x;if(Math.abs(dx)>48)b.x+=Math.sign(dx)*.42;if(b.kind==='final'&&Math.sin(b.t*2)>0.88&&Math.abs(dx)<100&&Math.abs(p.y-b.y)<60)hurt();else if(b.kind!=='final'&&Math.abs(dx)<25&&Math.abs(p.y-b.y)<50&&Math.sin(b.t*2.7)>0.5)hurt();if(b.kind==='eater'&&Math.sin(b.t*1.4)>.97)projectiles.push({x:b.x,y:b.y+20,vx:Math.sign(dx)*1.5,life:2,kind:'ember'});}
+for(const z of projectiles){z.x+=z.vx;z.life-=dt;if(z.kind==='hex'){for(const e of [...enemies,...bosses.filter(b=>b.active&&!b.dead)])if(!e.dead&&Math.abs(z.x-e.x)<12&&Math.abs(z.y-(e.y+12))<19){e.hp-=3;e.hit=.2;z.life=0;burst(e.x,e.y+12,'#bd9ce9',8);if(e.hp<=0){e.dead=true;if(e.pet){unlocked.push(e.pet);pets.push(e.pet);notify(`${e.pet} CLAIMED`)} }} }else if(Math.abs(z.x-p.x)<10&&Math.abs(z.y-(p.y+12))<14)hurt();}
+projectiles=projectiles.filter(z=>z.life>0);for(const q of particles){q.x+=q.vx;q.y+=q.vy;q.vy+=.08;q.life-=dt}particles=particles.filter(q=>q.life>0);
+if(bosses.every(b=>b.dead)){mode='win';showEnding()}
+cam=Math.max(0,Math.min(worldW-W,p.x-W*.38));if(shake>0)shake=Math.max(0,shake-dt*18);if(toastTime>0)toastTime-=dt;
+}
+function drawSky(){
+ let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#151326');g.addColorStop(.52,'#302037');g.addColorStop(1,'#482b37');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ // moon and drifting starfield
+ ctx.fillStyle='#e6c6b6';ctx.globalAlpha=.13;ctx.beginPath();ctx.arc(362-cam*.025,63,29,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.8;ctx.fillStyle='#ead6c2';ctx.beginPath();ctx.arc(358-cam*.025,59,24,0,Math.PI*2);ctx.fill();ctx.fillStyle='#292035';ctx.beginPath();ctx.arc(369-cam*.025,51,22,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+ for(const s of stars){let x=(s.x-cam*.13)%worldW;if(x<0)x+=worldW;if(x<W){ctx.globalAlpha=s.a;rect(x,s.y,s.r,s.r,'#f3d9d1')}}ctx.globalAlpha=1;
+ // distant spired silhouette
+ for(let i=-1;i<10;i++){let x=i*100-(cam*.22%100);rect(x,116,72,112,'#241c2c');rect(x+10,99,5,21,'#241c2c');rect(x+12,82,2,18,'#241c2c');rect(x+29,83,4,34,'#241c2c');rect(x+31,65,2,20,'#241c2c');rect(x+54,101,4,20,'#241c2c');rect(x+55,84,2,17,'#241c2c');rect(x+22,140,6,24,'#4e2c3c');rect(x+43,131,7,31,'#4e2c3c');}
+ // nearer cathedral columns
+ for(let i=-1;i<7;i++){let x=i*145-(cam*.42%145);rect(x,141,7,87,'#302031');rect(x+10,131,10,97,'#392239');rect(x+20,146,6,82,'#302031');rect(x-2,138,31,5,'#533042');rect(x+3,124,3,15,'#302031');rect(x+5,115,2,10,'#302031');rect(x+17,132,3,14,'#302031');rect(x+18,125,2,8,'#302031');}
+ // stained glass glows
+ for(let i=0;i<5;i++){let x=74+i*125-(cam*.58%125);rect(x,157,8,35,'#744154');rect(x+2,150,4,9,'#a85b68');rect(x+3,163,2,10,'#e1a17f');rect(x-2,192,12,2,'#9b5b67')}
+}
+function drawWorld(){
+ drawSky();ctx.save();if(shake)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);ctx.translate(-Math.floor(cam),0);
+ // architecture silhouettes and moonlit curtains
+ for(let i=0;i<worldW;i+=560){rect(i+30,83,7,145,'#211927');rect(i+24,78,19,7,'#342234');rect(i+32,56,3,23,'#211927');rect(i+33,42,1,14,'#493044');rect(i+100,104,4,124,'#251a29');rect(i+94,99,16,6,'#392333');rect(i+100,84,4,15,'#251a29');}
+ // chasm floor and gothic masonry
+ rect(0,GROUND,worldW,42,'#17131d');rect(0,GROUND,worldW,4,'#7c4c58');rect(0,GROUND+4,worldW,2,'#392431');
+ for(let x=0;x<worldW;x+=24){rect(x,GROUND+8,23,1,'#30232d');rect(x+11,GROUND+9,1,12,'#30232d');rect(x+((x/24)%2)*12,GROUND+22,1,12,'#30232d');rect(x+2,GROUND+35,5,2,'#49313b');}
+ for(const q of platforms){if(q.y===GROUND)continue;rect(q.x,q.y,q.w,5,'#875462');rect(q.x,q.y+5,q.w,5,'#3b2936');rect(q.x+4,q.y+10,q.w-8,3,'#211a26');for(let x=q.x+7;x<q.x+q.w-4;x+=18)rect(x,q.y+2,1,3,'#c18383');}
+ // iron candles along the path
+ for(let x=60;x<worldW;x+=180){rect(x,GROUND-13,2,13,'#6e5360');rect(x-2,GROUND-15,6,2,'#a67472');rect(x,GROUND-20,2,4,'#ffc58d');ctx.globalAlpha=.25;rect(x-3,GROUND-23,8,8,'#ffb36b');ctx.globalAlpha=1;}
+ // room gates / sigils
+ for(const r of rooms.slice(1)){let x=r.x-34;rect(x,GROUND-75,2,75,'#72515d');rect(x+42,GROUND-75,2,75,'#72515d');rect(x-3,GROUND-77,50,3,'#8e6471');rect(x+19,GROUND-90,2,13,'#8e6471');rect(x+10,GROUND-92,20,2,'#8e6471');}
+ for(const e of enemies)if(!e.dead)drawEnemy(e);
+ for(const b of bosses)if(!b.dead&&b.active)drawBoss(b);
+ drawPlayer();drawPets();
+ for(const z of projectiles){if(z.kind==='hex'){ctx.fillStyle='#c9a2ed';ctx.fillRect(z.x-3,z.y-3,7,7);ctx.fillStyle='#f0d7fa';ctx.fillRect(z.x-1,z.y-1,3,3)}else{ctx.fillStyle='#f59b63';ctx.fillRect(z.x-3,z.y-2,6,5)}}
+ for(const q of particles){ctx.globalAlpha=Math.max(0,q.life*2);rect(q.x,q.y,2,2,q.color)}ctx.globalAlpha=1;
+ ctx.restore();
+}
+function drawEnemy(e){let x=Math.round(e.x),y=Math.round(e.y);ctx.globalAlpha=e.hit>0?.5:1;if(e.type==='wraith'){
+ ctx.fillStyle='#b9a3b8';ctx.fillRect(x+4,y+2,7,6);ctx.fillRect(x+2,y+8,11,8);ctx.fillRect(x+4,y+16,3,5);ctx.fillRect(x+10,y+16,3,6);ctx.fillStyle='#3c263a';ctx.fillRect(x+5,y+5,2,2);ctx.fillRect(x+9,y+5,2,2);ctx.fillStyle='#f3a5b0';ctx.fillRect(x+6,y+5,1,1);ctx.fillRect(x+10,y+5,1,1);ctx.fillStyle='#6b405c';ctx.fillRect(x,y+11,3,5);ctx.fillRect(x+13,y+11,3,5);
+ }else{ctx.fillStyle='#4b2938';ctx.fillRect(x+2,y+7,13,12);ctx.fillRect(x,y+13,16,5);ctx.fillStyle='#a65962';ctx.fillRect(x+5,y+4,8,7);ctx.fillRect(x+3,y+1,3,7);ctx.fillRect(x+11,y+1,3,7);ctx.fillStyle='#ffe0a2';ctx.fillRect(x+7,y+6,2,2);ctx.fillRect(x+11,y+6,2,2);ctx.fillStyle='#211722';ctx.fillRect(x+3,y+18,4,5);ctx.fillRect(x+11,y+18,4,5);}
+ ctx.globalAlpha=1;if(e.hp<e.maxHp){rect(x,y-5,e.w,2,'#392a38');rect(x,y-5,e.w*e.hp/e.maxHp,2,'#db7d83')}
+}
+function drawBoss(b){let x=Math.round(b.x),y=Math.round(b.y),pulse=Math.sin(b.t*3)*2;ctx.globalAlpha=b.hit>0?.5:1;
+ if(b.kind==='abbess'){ctx.fillStyle='#201824';ctx.fillRect(x-9,y+8,38,34);ctx.fillStyle='#493044';ctx.fillRect(x-5,y,30,17);ctx.fillStyle='#d3b7a3';ctx.fillRect(x+4,y+2,13,14);ctx.fillStyle='#8c344d';ctx.fillRect(x+1,y+1,22,6);ctx.fillRect(x+1,y+12,21,5);ctx.fillStyle='#f4bf9e';ctx.fillRect(x+8,y+7,2,2);ctx.fillRect(x+14,y+7,2,2);ctx.fillStyle='#231a27';ctx.fillRect(x-13,y+35,8,8);ctx.fillRect(x+17,y+35,8,8);
+ }else if(b.kind==='eater'){ctx.fillStyle='#342034';ctx.fillRect(x-4,y+7,29,32);ctx.fillRect(x+2,y+2,18,14);ctx.fillStyle='#792f43';ctx.fillRect(x-9,y+12,8,16);ctx.fillRect(x+21,y+12,8,16);ctx.fillStyle='#f7a164';ctx.fillRect(x+5,y+9,4,3);ctx.fillRect(x+14,y+9,4,3);ctx.fillStyle='#ffcb84';ctx.fillRect(x+9,y+18,7,8);rect(x+11,y+19,3,4,'#fff0c1');
+ }else{ctx.fillStyle='#211827';ctx.fillRect(x-16,y+7,53,36);ctx.fillStyle='#352239';ctx.fillRect(x-8,y,39,26);ctx.fillStyle='#604051';ctx.fillRect(x-4,y+4,31,5);ctx.fillStyle='#db8990';ctx.fillRect(x+1,y+12,6,3);ctx.fillRect(x+18,y+12,6,3);ctx.fillStyle='#ffd2a1';ctx.fillRect(x+3,y+12,2,2);ctx.fillRect(x+20,y+12,2,2);ctx.fillStyle='#17131d';ctx.fillRect(x-21,y+16,9,20);ctx.fillRect(x+36,y+16,9,20);ctx.fillStyle='#a35765';ctx.fillRect(x+6,y+29,3,7);ctx.fillRect(x+20,y+29,3,7);}
+ ctx.globalAlpha=1;
+ // floating halo and health
+ ctx.globalAlpha=.65;rect(x+4,y-8+pulse,21,1,'#d4918f');rect(x+1,y-6+pulse,2,1,'#d4918f');rect(x+26,y-6+pulse,2,1,'#d4918f');ctx.globalAlpha=1;
+ let bw=b.kind==='final'?72:54;rect(x+4-bw/2,y-17,bw,4,'#221b2a');rect(x+5-bw/2,y-16,(bw-2)*Math.max(0,b.hp/b.maxHp),2,'#b14b61');
+}
+function drawPlayer(){let p=player,x=Math.round(p.x),y=Math.round(p.y);ctx.globalAlpha=p.inv>0&&Math.floor(p.inv*14)%2===0?.35:1;
+ // hair silhouette and pale face
+ ctx.fillStyle='#170f1b';ctx.fillRect(x+2,y+3,10,8);ctx.fillRect(x+1,y+9,4,13);ctx.fillRect(x+9,y+9,5,15);ctx.fillRect(x+3,y+20,8,4);
+ ctx.fillStyle='#caa6a1';ctx.fillRect(x+5,y+5,6,7);ctx.fillStyle='#231a25';ctx.fillRect(x+9,y+7,2,1);
+ // gothic dress with crisp red trim
+ ctx.fillStyle='#332031';ctx.fillRect(x+4,y+12,8,7);ctx.fillRect(x+2,y+18,12,5);ctx.fillStyle='#7d3449';ctx.fillRect(x+2,y+20,12,2);ctx.fillStyle='#d7b8a5';ctx.fillRect(x+5,y+13,2,5);
+ // legs / boots
+ ctx.fillStyle='#1b1721';ctx.fillRect(x+4,y+23,4,3);ctx.fillRect(x+10,y+23,4,3);
+ // weapon and swing arc
+ if(p.attack>0){ctx.strokeStyle=weapons[p.weapon].color;ctx.lineWidth=2;ctx.beginPath();let cx=x+6+p.face*9;ctx.arc(cx,y+12,14,p.face===1?-.9:Math.PI-.9,p.face===1?.9:Math.PI+.9);ctx.stroke();ctx.fillStyle=weapons[p.weapon].color;ctx.fillRect(x+9+p.face*8,y+8,2,9)}else{ctx.fillStyle=weapons[p.weapon].color;ctx.fillRect(x+7+p.face*5,y+13,2,8);ctx.fillRect(x+6+p.face*5,y+15,4,2)}
+ ctx.globalAlpha=1;
+}
+function drawPets(){if(!pets.length)return;let p=player,px=Math.round(p.x-14+Math.sin(performance.now()/220)*3),py=Math.round(p.y+8+Math.cos(performance.now()/270)*3);ctx.globalAlpha=.92;
+ if(pets[0]==='MOURNING MOTH'){ctx.fillStyle='#d8c6cf';ctx.fillRect(px+4,py+3,4,4);ctx.fillStyle='#a98ca7';ctx.fillRect(px,py,4,5);ctx.fillRect(px+8,py,4,5);ctx.fillStyle='#f3d7c9';ctx.fillRect(px+5,py+4,1,1)}else if(pets[0]==='GLOAM KITTEN'){ctx.fillStyle='#211925';ctx.fillRect(px+2,py+2,9,7);ctx.fillRect(px+1,py,3,4);ctx.fillRect(px+9,py,3,4);ctx.fillStyle='#d79a91';ctx.fillRect(px+4,py+4,2,2);ctx.fillRect(px+8,py+4,2,2)}else{ctx.fillStyle='#24202e';ctx.fillRect(px+2,py+2,9,6);ctx.fillRect(px+1,py,4,3);ctx.fillRect(px+8,py,4,3);ctx.fillStyle='#b97c85';ctx.fillRect(px+5,py+4,1,1);ctx.fillRect(px+9,py+4,1,1)}
+ if(player.petCall>0){ctx.globalAlpha=.4;ctx.fillStyle='#d2a8d1';ctx.beginPath();ctx.arc(px+6,py+4,12,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+}
+let lastRoom=-1;
+function drawHUD(){
+ // top vignette and framed gauges
+ ctx.fillStyle='#0c0a12cc';ctx.fillRect(0,0,W,39);ctx.fillStyle='#78505c';ctx.fillRect(7,7,143,28);ctx.fillStyle='#211923';ctx.fillRect(9,9,139,24);
+ text('PANDORA',15,18,8,'#e8d8c8');text(weapons[player.weapon].name,15,28,6,'#b88c9a');
+ for(let i=0;i<player.maxHp;i++){let x=160+i*11;rect(x,10,9,8,'#382431');if(i<player.hp){rect(x+1,11,7,6,'#b94c61');rect(x+3,10,3,2,'#e2868b')}}
+ text('VITAL',160,28,6,'#bd9da1');for(let i=0;i<player.maxMana;i++){let x=222+i*8;rect(x,12,5,5,'#30253c');if(i<player.mana){rect(x+1,12,3,4,'#a888ce')}}text('HEX',222,28,6,'#a99abd');
+ // room progress strip
+ rect(331,10,139,20,'#211923');rect(333,12,135,2,'#493344');for(let i=0;i<worldW;i+=100){let xx=334+i/worldW*132;rect(xx,12,1,2,'#8e6471')}
+ rect(334+player.x/worldW*132,10,3,6,'#edc3a2');for(const b of bosses)if(b.dead){let xx=334+b.x/worldW*132;rect(xx,12,3,2,'#f1a0a4')}
+ text('ABBEY',332,27,6,'#b8a4ad');
+ if(pets.length){rect(412,34,58,14,'#201923');text('♡ '+pets.length+' FAMILIAR'+(pets.length>1?'S':''),416,43,5,'#d7b6d0')}
+ // room title on crossing threshold
+ let room=0;for(let i=0;i<rooms.length;i++)if(player.x>=rooms[i].x)room=i;
+ if(room!==lastRoom){lastRoom=room;notify(`${rooms[room].name} · ${rooms[room].sub.toUpperCase()}`)}
+ if(toastTime>0){let a=Math.min(1,toastTime*2);ctx.globalAlpha=a;let tw=Math.min(420,toast.length*5.2+20);rect((W-tw)/2,47,tw,15,'#17121ddf');rect((W-tw)/2,47,tw,1,'#875967');text(toast,W/2,57,6,'#ead4c7','center');ctx.globalAlpha=1}
+ const boss=bosses.find(b=>b.active&&!b.dead);if(boss){rect(150,246,180,13,'#0c0912dd');rect(153,248,174,3,'#392431');rect(153,248,174*Math.max(0,boss.hp/boss.maxHp),3,'#b94b60');text(boss.name,240,243,6,'#e8cfbf','center')}
+}
+function showEnding(){document.getElementById('overlay').classList.remove('hidden');document.querySelector('.eyebrow').textContent='THE BELLS FALL SILENT';document.querySelector('.title').textContent='DAWN, AT LAST';document.querySelector('.subtitle').textContent='The Hollow Keepsake · Complete';document.querySelector('.story').textContent='Pandora carried every lost soul out of the dark. The familiars found a home beside her, and for the first time in a century, the bells rang for the living.';document.getElementById('start').textContent='✦  Begin again  ✦';document.querySelector('.hint').innerHTML='YOU CLAIMED ALL THREE RELIQUARIES<br>THANK YOU FOR PLAYING';document.getElementById('start').onclick=()=>location.reload()}
+function render(){ctx.clearRect(0,0,W,H);drawWorld();drawHUD();if(mode==='pause'){rect(0,0,W,H,'#080710a8');text('DESCENT PAUSED',W/2,127,13,'#f0d7c6','center');text('PRESS ESC TO RETURN',W/2,145,7,'#b99ca9','center')}
+ // subtle cinematic frame
+ ctx.strokeStyle='#9a6d77';ctx.globalAlpha=.55;ctx.strokeRect(.5,.5,W-1,H-1);ctx.globalAlpha=1;
+}
+function frame(now){let dt=(now-last)/1000||0;last=now;update(dt);render();requestAnimationFrame(frame)}
+window.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if([' ','arrowleft','arrowright','arrowup','arrowdown'].includes(k))e.preventDefault();if(!keys[k])input(k);keys[k]=true});window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
+document.querySelectorAll('.touch').forEach(button=>{const k=button.dataset.key;button.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true;input(k);button.setPointerCapture(e.pointerId)});const release=e=>{e.preventDefault();keys[k]=false};button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release)});
+requestAnimationFrame(frame);
+</script></body></html>

@@ -16,3 +16,19 @@
 - 👤 [Explore the creator's projects](https://go.ondev.store/daarkqueen).
 - 🌍 [Create with OMGithub](https://go.ondev.store/).
 <!-- omgithub:readme:end -->
+
+## Vesperbell: The Hollow Keepsake
+
+A browser-playable gothic pixel-art metroidvania starring Pandora. Explore the haunted abbey, fight three bosses, and claim their familiar companions. Pandora can switch between the Bell-Sickle and Grave Needle, cast ranged hexes, and call her pets. Boss victories also restore and increase her health and magic.
+
+### Controls
+
+- **A / D** or **← / →** — move
+- **Space** or **↑** — jump
+- **X** — attack
+- **C** — cast a hex (uses magic)
+- **Q** — switch weapon
+- **F** — call your familiar
+- **Esc** — pause
+
+Touch controls are available on mobile. Open `index.html` in a browser to play.
